@@ -68,3 +68,6 @@ get '/set_rrd_file_master' do
 
   "rrd_file_master = #{@@server.get_master}"
 end
+
+get '/list' do
+end
