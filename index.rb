@@ -4,8 +4,6 @@ require 'sinatra'
 require 'RRD'
 
 class RRDServer
-  @@test_param = 0
-  @@rrd_file_master = "web_test.rrd"
   def create(rrd_file)
     RRD.create(
                rrd_file,
@@ -17,16 +15,28 @@ class RRDServer
                )
   end
   def update(rrd_file, time, value)
+    puts "rrd_file = #{rrd_file}, time = #{time}, value = #{value}"
     RRD.update(rrd_file, "#{time}:#{value}:#{value.to_i * value.to_i}")
     return value
   end
 
-  def set_master (name)
-    @@rrd_file_master = name
-  end
-
-  def get_master
-    return @@rrd_file_master
+  def graph(key, time)
+    @rrd_file = "/root/nummon/nummon/#{key}.rrd"
+    RRD.graph(
+              "/root/nummon/nummon/#{key}.png",
+              "--title", " RubyRRD Demo", 
+              "--start", "#{time - 40000}",
+              "--end", "#{time}",
+              "--interlace", 
+              "--imgformat", "PNG",
+              "--width=450",
+              "DEF:a=#{@rrd_file}:a:AVERAGE",
+              "DEF:b=#{@rrd_file}:b:AVERAGE",
+              "CDEF:line=TIME,2400,%,300,LT,a,UNKN,IF",
+              "AREA:b#00b6e4:beta",
+              "AREA:line#0022e9:alpha",
+              "LINE3:line#ff0000") 
+    return ""
   end
 end
 
@@ -40,10 +50,9 @@ end
 
 get '/update' do
   @value = params[:value]
-  @rrd_file = params[:rrd_file]
-#  @time = params[:time]
+  @key = params[:key]
+  @rrd_file = "#@key.rrd"
   @time = Time.now.to_time.to_i
-  puts "#@time"
   @server = RRDServer.new
   @output = @server.update(@rrd_file, @time, @value)
 
@@ -51,7 +60,8 @@ get '/update' do
 end
 
 get '/create' do
-  @rrd_file = params[:rrd_file]
+  @key = params[:key]
+  @rrd_file = "#@key.rrd"
 
   @server = RRDServer.new
   @server.create(@rrd_file)
@@ -59,15 +69,13 @@ get '/create' do
   "#@rrd_file was created."
 end
 
-get '/get_rrd_file_master' do
-  "rrd_file_master = #{@@server.get_master}"
-end
-
-get '/set_rrd_file_master' do
-  @@server.set_master(params[:rrd_file_master])
-
-  "rrd_file_master = #{@@server.get_master}"
-end
-
 get '/list' do
+end
+
+get '/graph' do
+  @key = params[:key]
+  @time = Time.now.to_time.to_i
+
+  @server = RRDServer.new
+  @server.graph(@key, @time)
 end
